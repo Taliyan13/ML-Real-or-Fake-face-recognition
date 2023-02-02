@@ -13,25 +13,15 @@ Python folders -
 pip install opencv-python
 
 import cv2
-
 import glob
-
 import pandas as pd
-
 import numpy as np
-
 from matplotlib import pyplot as plt
-
 import matplotlib.image as mpimg
-
 import math
-
 from scipy.special import expit
-
 import os
-
 import matplotlib as mpl
-
 import itertools
 
 Necessary dependencies for the project - 
