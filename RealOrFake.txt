@@ -1,0 +1,429 @@
+import cv2
+import glob
+import pandas as pd
+import numpy as np
+from matplotlib import pyplot as plt
+import matplotlib.image as mpimg
+import math
+from scipy.special import expit
+import os
+import matplotlib as mpl
+import itertools
+
+
+realPath = glob.glob("C:\\Users\\taliy\\Videos\\trainData\\real\\*.jpg")
+fakePath = glob.glob("C:\\Users\\taliy\\Videos\\trainData\\fake\\*.jpg")
+
+
+targets = np.ones(len(realPath)+len(fakePath))
+print(len(targets))
+print(targets)
+
+
+
+
+#train data
+global tmpCountR
+global real_avg_counter
+global fake_avg_counter
+global radialProfileAVGR_array_all
+#global radialProfileAVGR_array_all
+
+#validation data
+global valid_real_avg_counter
+global valid_fake_avg_counter
+
+#future test data
+global target_future_IndexCounter
+
+
+
+
+epsilon = 10**(-8)
+number_iter = 1000
+tmpCountR = 0
+tmpCountF = 0
+targetIndexCounter = 0
+
+#train
+real_avg_counter=0
+fake_avg_counter=0
+test_mode=0
+#validation
+valid_real_avg_counter=0
+valid_fake_avg_counter=0
+#future test
+target_future_IndexCounter=0
+
+
+
+
+maxRadius = math.floor(math.sqrt(511**2+511**2))
+radius_array=np.ones((len(realPath)+len(fakePath),maxRadius))
+radialProfileAVGR_array_all=np.ones((len(realPath)+len(fakePath),maxRadius))
+#radialProfileAVGR_array_all = radialProfileAVGR_array_all.astype('float128')
+radialProfileAVGR_array_real=np.ones((len(realPath),maxRadius))
+radialProfileAVGR_array_fake=np.ones((len(fakePath),maxRadius))
+
+probabilities_array=np.ones(len(targets))
+update_probabilities_array=np.ones(len(targets))
+
+print(maxRadius)
+
+
+
+def radius_function(magnitude,row_index,real_or_fake,test_mode):
+    #validation valus
+    global valid_real_avg_counter
+    global valid_fake_avg_counter
+    global validation_radAVGR_array_all
+    # train values
+    global real_avg_counter
+    global fake_avg_counter
+    global radialProfileAVGR_array_all
+    #future data
+    global future_radAVGR_array_all
+    global target_future_IndexCounter
+
+    
+    # Image center
+    cen_x = 511
+    cen_y = 511
+    # Get image parameters
+    a = magnitude.shape[0]
+    b = magnitude.shape[1]
+    # Find radial distances
+    [X, Y] = np.meshgrid(np.arange(b) - cen_x, np.arange(a) - cen_y)
+    R = np.sqrt(np.square(X) + np.square(Y)) -2
+    rad = np.arange(1, np.max(R), 1)
+    #print(rad)
+    intensity = np.zeros(len(rad))
+    index = 0
+    for i in rad:
+      mask = (np.greater(R, i - 1) & np.less(R, i + 1))
+      values = magnitude[mask]
+      intensity[index] = np.mean(values)
+      index += 1    
+    print(intensity)
+    #print(len(intensity))
+    
+    #test_mode==0 ----> we sent the train data
+    if test_mode==0:
+        for i in range(len(intensity)):
+            radialProfileAVGR_array_all[row_index][i]=intensity[i]*0.01
+            radius_array[row_index][i]=intensity[i]
+            
+            if real_or_fake ==0:
+                radialProfileAVGR_array_real[real_avg_counter][i]=intensity[i]
+            else:
+                radialProfileAVGR_array_fake[fake_avg_counter][i]=intensity[i]
+
+        if real_or_fake ==0:
+            real_avg_counter=real_avg_counter+1
+        else:
+            fake_avg_counter=fake_avg_counter+1
+
+            
+    #test_mode==1 ----> we sent the validation data
+    if test_mode==1:  
+        for i in range(len(intensity)):
+            validation_radAVGR_array_all[row_index][i]=intensity[i]*0.01
+            if real_or_fake ==0:
+                valid_radAVGR_array_real[valid_real_avg_counter][i]=intensity[i]
+            else:
+                valid_radAVGR_array_fake[valid_fake_avg_counter][i]=intensity[i]
+
+        if real_or_fake ==0:
+            valid_real_avg_counter=valid_real_avg_counter+1
+        else:
+            valid_fake_avg_counter=valid_fake_avg_counter+1
+        
+     #test_mode==2 ----> we sent the future data
+    if test_mode==2:  
+        for i in range(len(intensity)):
+            future_radAVGR_array_all[row_index][i]=intensity[i]*0.01
+
+
+               
+			   
+			   
+targetIndexCounter = 0
+tmpCountR=0
+
+
+
+			   
+for filename in realPath:
+    img = cv2.imread(filename,0)
+    targets[targetIndexCounter] = 0
+    #img_color = mpimg.imread(filename)
+    # Calculate FFT
+    f = np.fft.fft2(img)
+    fshift = np.fft.fftshift(f)
+    fshift += epsilon
+    magnitude = 20*np.log(np.abs(fshift))
+    
+    #raduis function
+    real_var=0
+    test_mode=0 # 1=validation mode, 0=train mode
+    #radius_function(magnitude,targetIndexCounter,real_var)
+    radius_function(magnitude,targetIndexCounter,real_var,test_mode)
+    targetIndexCounter = targetIndexCounter + 1
+
+
+	
+	
+	
+print(valid_targets)
+	
+	
+	
+#Visualization
+fig = plt.figure(figsize=(15,5))
+plt.axis('off')
+ax = fig.add_subplot(122)
+ax.set_title('1D Power Spectrum',size=15)
+plt.xlabel('Spatial Frequency', fontsize=20)
+plt.ylabel('Power Spectrum', fontsize=20)
+#ax.imshow(img_color)
+for i in range(len(valid_radAVGR_array_real)):
+    ax.plot(valid_radAVGR_array_real[i], color='pink', label='real', linewidth =1.0)
+    ax.plot(valid_radAVGR_array_fake[i], color='orange', label='fak', linewidth =1.0)
+plt.show()
+
+
+
+
+test_features=validation_radAVGR_array_all
+m,n = test_features.shape
+
+
+
+
+
+
+num_params = 0
+z = np.ones(m)
+z=z.reshape(m,1)
+
+test_features=np.ones((len(validation_radAVGR_array_all),len(validation_radAVGR_array_all[0])+1))
+
+num_params = len(validation_radAVGR_array_all[0])
+m = len(validation_radAVGR_array_all)
+for i in range(0, len(validation_radAVGR_array_all)):
+            #predicted = self.get_prediction(theta, self.dataset[i])
+            #actual = self.dataset[i][-1]
+            test_features[i][0]=1
+            for j in range(0, num_params):
+                test_features[i][j+1]=validation_radAVGR_array_all[i][j]
+print(test_features)  
+
+
+
+
+
+
+threshold=0.5
+TP_test=0
+FP_test=0
+FN_test=0
+TN_test=0
+
+valid_probabilities_array=probabilities_function(test_features, valid_probabilities_array,theta)
+valid_update_probabilities_array=probabilities_with_threshold_function(valid_probabilities_array,valid_update_probabilities_array,threshold)
+TP_test,FN_test,FP_test,TN_test=confusion_matrix_function(valid_update_probabilities_array,valid_targets)
+print_matrix_data(TP_test,FN_test,FP_test,TN_test)
+ROC_curve(valid_targets,valid_probabilities_array)
+print(valid_update_probabilities_array)
+
+plot_confusion_matrix(cm           = np.array([[ TN_test,  FP_test],
+                                              [  FN_test,  TP_test]]), 
+                      normalize    = False,
+                      target_names = ['0', '1'],
+                      title        = "Confusion Matrix")
+
+
+
+
+
+
+futureData_path = glob.glob("C:\\Users\\taliy\\Videos\\futureData\\*.jpg")
+future_radAVGR_array_all = np.ones((len(futureData_path),maxRadius))
+global future_probabilities_array
+global update_future_probabilities_array
+
+
+
+future_probabilities_array=np.ones((len(futureData_path)))
+update_future_probabilities_array=np.ones((len(futureData_path)))
+imges_name = np.ones((len(futureData_path)))
+target_future_IndexCounter=0
+
+
+
+
+#futureData
+def futureData_addData():
+    #calculate radius fratures
+    global target_future_IndexCounter
+    
+    for filename in futureData_path:
+        img = cv2.imread(filename,0)
+        # Calculate FFT
+        f = np.fft.fft2(img)
+        fshift = np.fft.fftshift(f)
+        fshift += epsilon
+        magnitude_test = 20*np.log(np.abs(fshift))
+        imgName = os.path.basename("C:\\Users\\taliy\\Videos\\futureData\\{}.jpg" + filename) #save img name
+        name,extension = imgName.split('.')
+        print(name)
+        imges_name[target_future_IndexCounter] = name
+        
+        
+        #raduis function
+        #valid_fake_var=1
+        test_mode=2
+        radius_function(magnitude_test,target_future_IndexCounter,valid_fake_var,test_mode)
+        target_future_IndexCounter = target_future_IndexCounter + 1
+    
+	
+	
+	
+	
+	
+def probabilities_for_futureData():
+    future_probabilities_array=np.ones((len(futureData_path)))
+    #update_future_probabilities_array=np.ones((len(futureData_path)))
+    global update_future_probabilities_array
+    imges_name = np.ones((len(futureData_path)))
+    target_future_IndexCounter=0
+    
+    #return the probabilities
+    print("")
+    print("probabilities of future data features")
+    future_probabilities_array=probabilities_function(future_features, future_probabilities_array,theta)
+        
+    print("")
+    print("0=true, 1=false")
+    #return probabilities of 0=true 1=false
+    update_future_probabilities_array=probabilities_with_threshold_function(future_probabilities_array,update_future_probabilities_array,threshold)
+    print(update_future_probabilities_array)
+    
+    
+    
+
+
+#print(futureData_function())
+threshold=0.5
+
+def futureData_function_apply():
+    futureData_path = glob.glob("C:\\Users\\taliy\\Videos\\futureData\\*.jpg")
+    future_radAVGR_array_all = np.ones((len(futureData_path),maxRadius))
+    global future_probabilities_array
+    global update_future_probabilities_array
+    print(futureData_addData())
+    future_features=future_radAVGR_array_all
+    m,n = future_features.shape
+
+    num_params = 0
+
+    future_features=np.ones((len(future_radAVGR_array_all),len(future_radAVGR_array_all[0])+1))
+
+    num_params = len(future_radAVGR_array_all[0])
+    m = len(future_radAVGR_array_all)
+    for i in range(0, len(future_radAVGR_array_all)):
+                #predicted = self.get_prediction(theta, self.dataset[i])
+                #actual = self.dataset[i][-1]
+                future_features[i][0]=1
+                for j in range(0, num_params):
+                    future_features[i][j+1]=future_radAVGR_array_all[i][j]
+    #print(future_features)  
+    
+    probabilities_for_futureData() 
+    
+
+
+
+
+
+
+# function 6 for future data
+futureData_function_apply()
+
+#futureData function-create csv file
+import base64
+import pandas as pd
+from IPython.display import HTML
+#global update_future_probabilities_array
+
+def create_download_link( df, title = "FutureDataEstimatedLabels file", filename = "FutureDataEstimatedLabels.csv"):
+    csv = df.to_csv()
+    b64 = base64.b64encode(csv.encode())
+    payload = b64.decode()
+    html = '<a download="{filename}" href="data:text/csv;base64,{payload}" target="_blank">{title}</a>'
+    html = html.format(payload=payload,title=title,filename=filename)
+    return HTML(html)
+
+
+raw_data = {'name': imges_name,
+                   'probabilities': update_future_probabilities_array}
+
+df = pd.DataFrame(raw_data, columns = ['name', 'probabilities'])
+create_download_link(df)	
+
+
+
+
+
+
+future_features=future_radAVGR_array_all
+m,n = future_features.shape
+
+num_params = 0
+
+future_features=np.ones((len(future_radAVGR_array_all),len(future_radAVGR_array_all[0])+1))
+
+num_params = len(future_radAVGR_array_all[0])
+m = len(future_radAVGR_array_all)
+for i in range(0, len(future_radAVGR_array_all)):
+            #predicted = self.get_prediction(theta, self.dataset[i])
+            #actual = self.dataset[i][-1]
+            future_features[i][0]=1
+            for j in range(0, num_params):
+                future_features[i][j+1]=future_radAVGR_array_all[i][j]
+print(future_features)  
+
+
+
+
+#q6
+
+# function 6 for future data
+futureData_function_apply()
+
+#futureData function-create csv file
+import base64
+import pandas as pd
+from IPython.display import HTML
+#global update_future_probabilities_array
+
+def create_download_link( df, title = "FutureDataEstimatedLabels file", filename = "FutureDataEstimatedLabels.csv"):
+    csv = df.to_csv()
+    b64 = base64.b64encode(csv.encode())
+    payload = b64.decode()
+    html = '<a download="{filename}" href="data:text/csv;base64,{payload}" target="_blank">{title}</a>'
+    html = html.format(payload=payload,title=title,filename=filename)
+    return HTML(html)
+
+
+raw_data = {'name': imges_name,
+                   'probabilities': update_future_probabilities_array}
+
+df = pd.DataFrame(raw_data, columns = ['name', 'probabilities'])
+create_download_link(df)
+
+
+
+
+
+
