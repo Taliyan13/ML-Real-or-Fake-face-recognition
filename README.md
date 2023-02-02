@@ -10,19 +10,20 @@ This project was written in Python and developed in Jupyter.
 To run this project in Jupyter, you will need anaconda3 installed on your machine. 
 
 Python folders - 
+
 pip install opencv-python
 
-import cv2
-import glob
-import pandas as pd
-import numpy as np
-from matplotlib import pyplot as plt
-import matplotlib.image as mpimg
-import math
-from scipy.special import expit
-import os
-import matplotlib as mpl
-import itertools
+*import cv2
+*import glob
+*import pandas as pd
+*import numpy as np
+*from matplotlib import pyplot as plt
+*import matplotlib.image as mpimg
+*import math
+*from scipy.special import expit
+*import os
+*import matplotlib as mpl
+*import itertools
 
 Necessary dependencies for the project - 
 In the folder I uploaded there are 1000 training images that are in TrainData. The images are divided into 2 directories, where there is a "real" directory that contains images of real faces and a "fake" directory that contains images of fake faces.
